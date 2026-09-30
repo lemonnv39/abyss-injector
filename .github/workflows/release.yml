@@ -1,0 +1,51 @@
+name: Release (Windows portable exe)
+
+# Construit l'injecteur en .exe PORTABLE (pas de NSIS/MSI) et publie une
+# GitHub Release avec `abyss-injector.exe`. Le self-update de l'app lit
+# `releases/latest` via l'API GitHub et télécharge cet asset (voir
+# src-tauri/src/updater.rs) — donc pas besoin de latest.json ni de clé de
+# signature d'updater.
+#
+# Déclenché en poussant un tag de version, ex : `git tag v0.1.0 && git push --tags`.
+# IMPORTANT : garde le tag aligné sur la version de Cargo.toml/tauri.conf.json
+# (le self-update compare le tag à CARGO_PKG_VERSION).
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: corepack enable
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: Install JS deps
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build portable exe (no installer)
+        run: pnpm tauri build --no-bundle
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src-tauri/target/release/abyss-injector.exe
+          fail_on_unmatched_files: true
+          generate_release_notes: true
