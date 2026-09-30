@@ -12,6 +12,8 @@
  * (patcher.js & co) depuis abyss-cord. Ici c'est l'injecteur lui-même.
  */
 
+use std::time::Duration;
+
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
@@ -40,7 +42,16 @@ pub struct UpdateInfo {
 }
 
 fn http_client() -> Result<reqwest::Client, String> {
-    reqwest::Client::builder().user_agent("AbyssInjector").build().map_err(|e| e.to_string())
+    // Timeouts explicites : sans eux, un réseau qui stalle figerait la
+    // vérification/le téléchargement à l'infini (reqwest n'a aucun timeout par
+    // défaut). Le timeout global est généreux car on télécharge l'exe complet
+    // (~10 Mo) — mieux vaut échouer proprement après un délai que geler.
+    reqwest::Client::builder()
+        .user_agent("AbyssInjector")
+        .connect_timeout(Duration::from_secs(15))
+        .timeout(Duration::from_secs(120))
+        .build()
+        .map_err(|e| e.to_string())
 }
 
 /// `v1.2.3` / `1.2.3` -> `1.2.3`

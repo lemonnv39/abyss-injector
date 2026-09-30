@@ -21,6 +21,7 @@
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 
 const BUILD_BASE_URL: &str = "https://raw.githubusercontent.com/lemonnv39/abyss-cord/builds";
@@ -70,7 +71,15 @@ pub fn latest_known_sha(app: &AppHandle) -> Option<String> {
 }
 
 fn http_client() -> Result<reqwest::Client, String> {
-    reqwest::Client::builder().user_agent("AbyssInjector").build().map_err(|e| e.to_string())
+    // Timeouts explicites : sans eux, un réseau qui stalle fige l'install à
+    // l'infini (reqwest n'a aucun timeout par défaut). On préfère une erreur
+    // claire après un délai généreux.
+    reqwest::Client::builder()
+        .user_agent("AbyssInjector")
+        .connect_timeout(Duration::from_secs(15))
+        .timeout(Duration::from_secs(60))
+        .build()
+        .map_err(|e| e.to_string())
 }
 
 async fn fetch_latest_sha(client: &reqwest::Client) -> Result<String, String> {
