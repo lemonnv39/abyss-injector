@@ -117,8 +117,6 @@
 </script>
 
 <div class="settings">
-    <h2 class="title">Paramètres</h2>
-
     <div class="card">
         <div class="card-title">Préréglages de plugins</div>
         <div class="card-subtitle">Sauvegarde ou restaure l'état et les réglages de tes plugins Abyss.</div>
@@ -170,53 +168,39 @@
     .settings {
         display: flex;
         flex-direction: column;
-        gap: var(--space-4);
+        gap: var(--space-3);
         height: 100%;
-        padding: 64px 24px 24px;
+        padding: 56px 26px 20px;
         box-sizing: border-box;
         overflow-y: auto;
     }
 
-    .title {
-        margin: 0 0 4px;
-        font-family: "Anton", "Space Grotesk", sans-serif;
-        font-size: 22px;
-        font-weight: 400;
-        letter-spacing: 0.01em;
-        text-transform: uppercase;
-        transform: skewX(-8deg);
-        transform-origin: left center;
-        display: inline-block;
-        color: #fff;
-        text-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
-    }
-
     .card {
         background: var(--surface);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid var(--border-strong);
+        border: 1px solid var(--border);
         border-radius: var(--radius-md);
         padding: var(--space-4);
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+        transition: border-color var(--duration-fast) var(--ease-out);
     }
+    .card:hover { border-color: var(--border-strong); }
 
     .card-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: #fff;
+        font-size: 13.5px;
+        font-weight: 650;
+        color: var(--text);
     }
 
     .card-subtitle {
         font-size: 12px;
         color: var(--text-dim);
         margin-top: 3px;
+        line-height: 1.45;
     }
 
     .credit {
         font-size: 11px;
         color: var(--text-faint);
-        margin-top: var(--space-2);
+        margin-top: var(--space-3);
     }
 
     .card-actions {
@@ -227,48 +211,42 @@
     }
 
     .btn {
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.05);
         border: 1px solid var(--border-strong);
-        color: #fff;
+        color: var(--text);
         padding: 9px 16px;
         border-radius: var(--radius-sm);
         font-size: 12.5px;
         font-weight: 600;
-        cursor: pointer;
-        transition: background var(--duration-fast) var(--ease-out);
+        transition: background var(--duration-fast) var(--ease-out),
+            border-color var(--duration-fast) var(--ease-out),
+            transform var(--duration-fast) var(--ease-out);
     }
-
-    .btn:hover:not(:disabled) {
-        background: rgba(255, 255, 255, 0.14);
-    }
-
-    .btn:disabled {
-        opacity: 0.55;
-        cursor: default;
-    }
+    .btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); border-color: var(--border-strong); }
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: default; }
 
     .btn--primary {
         background: var(--accent);
         border-color: transparent;
+        color: var(--on-accent);
+        box-shadow: 0 2px 12px rgba(124, 58, 237, 0.3);
     }
-
-    .btn--primary:hover:not(:disabled) {
-        background: var(--accent-hover);
-    }
+    .btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
 
     .hint {
         margin: 0;
         font-size: 12px;
         color: var(--ok);
-        padding: var(--space-2) var(--space-3);
+        padding: 9px 12px;
         border-radius: var(--radius-sm);
-        background: rgba(35, 165, 90, 0.1);
-        border: 1px solid rgba(35, 165, 90, 0.3);
+        background: rgba(52, 211, 153, 0.1);
+        border: 1px solid rgba(52, 211, 153, 0.3);
     }
 
     .hint--error {
-        color: #ff8b8e;
-        background: rgba(237, 66, 69, 0.08);
-        border-color: rgba(237, 66, 69, 0.35);
+        color: var(--danger);
+        background: rgba(248, 113, 113, 0.1);
+        border-color: rgba(248, 113, 113, 0.35);
     }
 </style>

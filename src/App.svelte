@@ -2,10 +2,10 @@
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
     import { listen } from "@tauri-apps/api/event";
+    import { getVersion } from "@tauri-apps/api/app";
 
     import TitleBar from "./lib/components/TitleBar.svelte";
     import Backdrop from "./lib/components/Backdrop.svelte";
-    import Splash from "./lib/components/Splash.svelte";
     import DiscordRow from "./lib/components/DiscordRow.svelte";
     import UpdateBanner from "./lib/components/UpdateBanner.svelte";
     import Settings from "./lib/components/Settings.svelte";
@@ -13,13 +13,13 @@
     import { checkForUpdate, installUpdate, type InjectorUpdate } from "./lib/api/updater";
     import type { DiscordInstall, InstallProgressEvent, RowPhase } from "./lib/types";
 
-    let screen = $state<"splash" | "list" | "settings">("splash");
-    let screenBeforeSettings: "splash" | "list" = "splash";
+    let screen = $state<"list" | "settings">("list");
 
     let installs = $state<DiscordInstall[]>([]);
     let phases = $state<Record<string, RowPhase>>({});
     let latestBuildSha = $state<string | null>(null);
     let globalError = $state<string | null>(null);
+    let appVersion = $state("");
 
     let pendingUpdate = $state<InjectorUpdate | null>(null);
     let installingUpdate = $state(false);
@@ -27,14 +27,8 @@
     let buildUpdating = $state(false);
     let buildUpdateAvailable = $state(false);
 
-    function sleep(ms: number) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    function phaseOf(branch: string): RowPhase {
-        return phases[branch] ?? { kind: "idle" };
-    }
-
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+    const phaseOf = (branch: string): RowPhase => phases[branch] ?? { kind: "idle" };
     const anyInstalling = $derived(Object.values(phases).some(p => p.kind === "installing"));
 
     function needsUpdate(install: DiscordInstall): boolean {
@@ -60,7 +54,7 @@
         phases = { ...phases, [install.branch]: { kind: "installing", step: "cleaning" } };
         try {
             await patcherApi.patch(install.resources_path, install.base_path, install.branch);
-            await sleep(1100);
+            await sleep(1000);
         } catch (e) {
             if (phaseOf(install.branch).kind !== "error") {
                 phases = { ...phases, [install.branch]: { kind: "error", message: String(e) } };
@@ -95,9 +89,6 @@
                 globalError = failures.map(r => `${r.branch} : ${r.message ?? "échec inconnu"}`).join(" — ");
             }
             buildUpdateAvailable = false;
-            // Réinjecté avec le nouveau build : rafraîchit build_sha par ligne
-            // pour que le statut "mettre à jour" disparaisse vraiment, au lieu
-            // de rester affiché malgré la mise à jour réelle.
             await refreshInstalls();
         } catch (e) {
             globalError = String(e);
@@ -117,10 +108,6 @@
         }
     }
 
-    /// Check manuel de l'injecteur lui-même (bouton Réglages) — distinct du
-    /// build Abyss (patcher.js et consorts) : ça, c'est une nouvelle version
-    /// de l'appli (nouveau style, nouvelle fonctionnalité...), déclenchée à
-    /// la demande plutôt que d'attendre le prochain lancement.
     async function checkInjectorUpdate(): Promise<"found" | "none"> {
         const u = await checkForUpdate();
         if (u) {
@@ -132,44 +119,28 @@
 
     onMount(() => {
         refreshInstalls();
-        patcherApi.getLatestBuildSha().then(sha => { latestBuildSha = sha; });
+        getVersion().then(v => (appVersion = v)).catch(() => {});
+        patcherApi.getLatestBuildSha().then(sha => (latestBuildSha = sha)).catch(() => {});
 
-        // Injecteur lui-même : check silencieux côté Rust (updater.rs) qui émet
-        // directement l'info de MAJ (version/notes/url). L'installation reste
-        // manuelle (bouton bannière/Réglages).
-        const unlistenUpdate = listen<InjectorUpdate>(
-            "injector-update-available",
-            e => { pendingUpdate = e.payload; },
-        );
-
-        // Contenu d'Abyss (patcher.js et consorts) : nouvelle version du
-        // cache local disponible.
-        const unlistenBuild = listen<{ sha: string }>(
-            "abyss-build-update-available",
-            () => {
-                buildUpdateAvailable = true;
-            },
-        );
-
-        // Dernier SHA distant connu, rafraîchi à CHAQUE lancement (voir
-        // dist_fetch::spawn_silent_check) — sans ça, aucune ligne ne pourrait
-        // jamais afficher "mettre à jour" avant un check manuel.
-        const unlistenLatestSha = listen<{ sha: string }>(
-            "latest-build-sha",
-            e => { latestBuildSha = e.payload.sha; },
-        );
-
-        const unlistenProgress = listen<InstallProgressEvent>(
-            "install-progress",
-            e => {
-                const { branch, step, status, message } = e.payload;
-                if (status === "error") {
-                    phases = { ...phases, [branch]: { kind: "error", message: message ?? "erreur inconnue" } };
-                } else {
-                    phases = { ...phases, [branch]: { kind: "installing", step } };
-                }
-            },
-        );
+        const unlistenUpdate = listen<InjectorUpdate>("injector-update-available", e => {
+            pendingUpdate = e.payload;
+        });
+        const unlistenBuild = listen<{ sha: string }>("abyss-build-update-available", () => {
+            buildUpdateAvailable = true;
+        });
+        const unlistenLatestSha = listen<{ sha: string }>("latest-build-sha", e => {
+            latestBuildSha = e.payload.sha;
+        });
+        const unlistenProgress = listen<InstallProgressEvent>("install-progress", e => {
+            const { branch, step, status, message } = e.payload;
+            phases = {
+                ...phases,
+                [branch]:
+                    status === "error"
+                        ? { kind: "error", message: message ?? "erreur inconnue" }
+                        : { kind: "installing", step },
+            };
+        });
 
         return () => {
             unlistenUpdate.then(u => u());
@@ -183,81 +154,72 @@
 <div class="shell">
     <Backdrop dimmed={anyInstalling} />
     <TitleBar
-        onBack={screen !== "splash" ? () => (screen = screen === "settings" ? screenBeforeSettings : "splash") : undefined}
-        onSettings={screen === "list"
-            ? () => {
-                  screenBeforeSettings = "list";
-                  screen = "settings";
-              }
-            : undefined}
+        onBack={screen === "settings" ? () => (screen = "list") : undefined}
+        onSettings={screen === "list" ? () => (screen = "settings") : undefined}
     />
 
     <div class="content">
         {#key screen}
-        <div class="screen-transition" in:fade={{ duration: 260 }} out:fade={{ duration: 160 }}>
-        {#if screen === "splash"}
-            <Splash onStart={() => (screen = "list")} />
-        {:else if screen === "settings"}
-            <Settings
-                {pendingUpdate}
-                {installingUpdate}
-                onCheckInjectorUpdate={checkInjectorUpdate}
-                onInstallInjectorUpdate={doInstallUpdate}
-            />
-        {:else}
-            <div class="list-screen">
-                <h2 class="brand">Abyss</h2>
-
-                {#if pendingUpdate}
-                    <UpdateBanner
-                        version={pendingUpdate.version}
-                        installing={installingUpdate}
-                        onInstall={doInstallUpdate}
+            <div class="view" in:fade={{ duration: 220 }}>
+                {#if screen === "settings"}
+                    <Settings
+                        {pendingUpdate}
+                        {installingUpdate}
+                        onCheckInjectorUpdate={checkInjectorUpdate}
+                        onInstallInjectorUpdate={doInstallUpdate}
                     />
-                {/if}
+                {:else}
+                    <div class="list">
+                        <header class="head">
+                            <h1>Installe <span class="grad">Abyss</span></h1>
+                            <p>Choisis un Discord et installe ou mets à jour le client mod.</p>
+                        </header>
 
-                {#if buildUpdateAvailable}
-                    <div class="banner">
-                        <span>Une nouvelle version d'Abyss est disponible.</span>
-                        <button disabled={buildUpdating} onclick={updateAbyssBuild}>
-                            {buildUpdating ? "Téléchargement…" : "Mettre à jour"}
-                        </button>
-                    </div>
-                {/if}
+                        {#if pendingUpdate}
+                            <UpdateBanner version={pendingUpdate.version} installing={installingUpdate} onInstall={doInstallUpdate} />
+                        {/if}
 
-                {#if globalError}
-                    <p class="error">{globalError}</p>
-                {/if}
-
-                <div class="rows-wrap">
-                    <div class="rows">
-                        {#each installs as install, i (install.branch)}
-                            <div class="row-enter" style={`animation-delay:${i * 45}ms`}>
-                                <DiscordRow
-                                    {install}
-                                    needsUpdate={needsUpdate(install)}
-                                    phase={phaseOf(install.branch)}
-                                    onInstall={() => runInstall(install)}
-                                    onUninstall={() => runUninstall(install)}
-                                    onConfirmUninstall={() => (phases = { ...phases, [install.branch]: { kind: "confirm-uninstall" } })}
-                                    onCancelConfirm={() => (phases = { ...phases, [install.branch]: { kind: "idle" } })}
-                                />
+                        {#if buildUpdateAvailable}
+                            <div class="mini-banner">
+                                <span><span class="dot"></span>Nouvelle version d'Abyss disponible</span>
+                                <button disabled={buildUpdating} onclick={updateAbyssBuild}>
+                                    {buildUpdating ? "Mise à jour…" : "Tout mettre à jour"}
+                                </button>
                             </div>
-                        {/each}
+                        {/if}
+
+                        {#if globalError}
+                            <p class="error">{globalError}</p>
+                        {/if}
+
+                        <div class="rows">
+                            {#each installs as install, i (install.branch)}
+                                <div class="row-in" style={`animation-delay:${i * 60}ms`}>
+                                    <DiscordRow
+                                        {install}
+                                        needsUpdate={needsUpdate(install)}
+                                        phase={phaseOf(install.branch)}
+                                        onInstall={() => runInstall(install)}
+                                        onUninstall={() => runUninstall(install)}
+                                        onConfirmUninstall={() => (phases = { ...phases, [install.branch]: { kind: "confirm-uninstall" } })}
+                                        onCancelConfirm={() => (phases = { ...phases, [install.branch]: { kind: "idle" } })}
+                                    />
+                                </div>
+                            {/each}
+                        </div>
+
+                        <footer class="foot">
+                            <span>Abyss Injector{appVersion ? ` v${appVersion}` : ""}</span>
+                            <span>Discord Stable · Canary · PTB</span>
+                        </footer>
                     </div>
-                </div>
+                {/if}
             </div>
-        {/if}
-        </div>
         {/key}
     </div>
 </div>
 
 <style>
-    :global(html, body) {
-        background: #000;
-    }
-
     .shell {
         position: relative;
         width: 100vw;
@@ -272,110 +234,103 @@
         height: 100%;
     }
 
-    .screen-transition {
+    .view {
         width: 100%;
         height: 100%;
     }
 
-    .list-screen {
+    .list {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 12px;
         height: 100%;
-        padding: 64px 24px 24px;
+        padding: 56px 26px 18px;
         box-sizing: border-box;
         overflow-y: auto;
     }
 
-    .brand {
-        margin: 0 0 4px;
-        font-family: "Anton", "Space Grotesk", sans-serif;
-        font-size: 22px;
-        font-weight: 400;
-        letter-spacing: 0.01em;
-        text-transform: uppercase;
-        transform: skewX(-8deg);
-        transform-origin: left center;
-        display: inline-block;
-        color: #fff;
-        text-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
+    .head h1 {
+        margin: 0;
+        font-size: 21px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: var(--text);
     }
-
-    .rows-wrap {
-        position: relative;
-        margin-top: auto;
-        margin-bottom: auto;
-        width: 100%;
-        max-width: 560px;
-        margin-left: auto;
-        margin-right: auto;
+    .grad {
+        background: linear-gradient(120deg, var(--accent-hover), #d8b4fe);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
     }
-
-    .row-enter {
-        animation: row-rise var(--duration-base) var(--ease-out) both;
-    }
-
-    @keyframes row-rise {
-        from {
-            opacity: 0;
-            transform: translateY(8px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .head p {
+        margin: 4px 0 0;
+        font-size: 12.5px;
+        color: var(--text-dim);
     }
 
     .rows {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 10px;
     }
 
-    .banner {
+    .row-in {
+        animation: row-in var(--duration-base) var(--ease-out) both;
+    }
+    @keyframes row-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .mini-banner {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: var(--space-4);
-        padding: var(--space-3) var(--space-4);
+        gap: var(--space-3);
+        padding: 9px 12px 9px 14px;
         border: 1px solid var(--border-strong);
         border-radius: var(--radius-md);
         background: var(--surface);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        font-size: 13px;
+        font-size: 12.5px;
         color: var(--text);
     }
-
-    .banner button {
-        background: transparent;
-        border: 1px solid var(--border-strong);
-        color: #fff;
-        padding: 7px 14px;
+    .mini-banner span { display: flex; align-items: center; gap: 8px; }
+    .mini-banner .dot {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: var(--accent-hover);
+        box-shadow: 0 0 8px var(--accent-line);
+    }
+    .mini-banner button {
+        border: 1px solid var(--accent-line);
+        background: var(--accent-soft);
+        color: var(--accent-hover);
+        padding: 7px 12px;
         border-radius: var(--radius-sm);
         font-size: 12px;
         font-weight: 600;
-        cursor: pointer;
         flex-shrink: 0;
         transition: background var(--duration-fast) var(--ease-out);
     }
-
-    .banner button:hover:not(:disabled) {
-        background: rgba(255, 255, 255, 0.1);
-    }
-
-    .banner button:disabled {
-        opacity: 0.6;
-        cursor: default;
-    }
+    .mini-banner button:hover:not(:disabled) { background: rgba(139, 92, 246, 0.22); }
+    .mini-banner button:disabled { opacity: 0.6; cursor: default; }
 
     .error {
         margin: 0;
-        padding: var(--space-2) var(--space-3);
+        padding: 9px 12px;
         border-radius: var(--radius-sm);
-        border: 1px solid rgba(237, 66, 69, 0.4);
-        background: rgba(237, 66, 69, 0.08);
-        color: #ff8b8e;
+        border: 1px solid rgba(248, 113, 113, 0.35);
+        background: rgba(248, 113, 113, 0.1);
+        color: var(--danger);
         font-size: 12px;
+    }
+
+    .foot {
+        margin-top: auto;
+        padding-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--text-faint);
     }
 </style>

@@ -1,15 +1,15 @@
 <script lang="ts">
-    // Fond sobre et léger : quelques halos radiaux flous qui dérivent très
-    // lentement (transform/opacity seulement — GPU-friendly), sur un dark de
-    // base + une vignette. Pas de vidéo, pas de canvas, pas de « trou noir ».
-    // `dimmed` (pendant une installation) atténue le tout pour focaliser l'UI.
+    // Fond sobre : un léger halo violet en haut, un bleu profond en bas, qui
+    // respirent très lentement (transform/opacity — GPU-friendly), sur un dark
+    // de base + vignette. Discret, jamais envahissant. `dimmed` l'atténue
+    // pendant une installation pour focaliser l'UI.
     let { dimmed = false }: { dimmed?: boolean } = $props();
 </script>
 
 <div class="backdrop" class:dimmed aria-hidden="true">
     <div class="glow glow-a"></div>
     <div class="glow glow-b"></div>
-    <div class="glow glow-c"></div>
+    <div class="grid"></div>
     <div class="vignette"></div>
 </div>
 
@@ -19,70 +19,61 @@
         inset: 0;
         z-index: 0;
         overflow: hidden;
-        background:
-            radial-gradient(120% 120% at 50% -10%, #0c0b16 0%, var(--bg) 55%);
+        background: radial-gradient(140% 120% at 50% -20%, #12131f 0%, var(--bg) 60%);
         transition: opacity var(--duration-slow) var(--ease-out);
     }
 
-    .backdrop.dimmed {
-        opacity: 0.35;
-    }
+    .backdrop.dimmed { opacity: 0.4; }
 
     .glow {
         position: absolute;
         border-radius: 50%;
-        filter: blur(90px);
-        opacity: 0.5;
+        filter: blur(100px);
         will-change: transform;
     }
 
-    /* Violet Abyss, en haut à gauche — la source lumineuse principale. */
     .glow-a {
-        width: 520px;
-        height: 520px;
-        top: -180px;
-        left: -140px;
-        background: radial-gradient(circle, rgba(139, 92, 246, 0.55), transparent 70%);
-        animation: drift-a 34s var(--ease-in-out) infinite;
-    }
-
-    /* Indigo profond, en bas à droite. */
-    .glow-b {
         width: 460px;
         height: 460px;
-        bottom: -160px;
-        right: -120px;
-        background: radial-gradient(circle, rgba(79, 70, 229, 0.5), transparent 70%);
-        animation: drift-b 42s var(--ease-in-out) infinite;
+        top: -200px;
+        left: -120px;
+        background: radial-gradient(circle, rgba(139, 92, 246, 0.4), transparent 70%);
+        animation: drift-a 38s var(--ease-in-out) infinite;
     }
 
-    /* Petite lueur froide, discrète, au centre-bas — juste une respiration. */
-    .glow-c {
-        width: 360px;
-        height: 360px;
-        bottom: -80px;
-        left: 40%;
-        background: radial-gradient(circle, rgba(45, 212, 191, 0.14), transparent 70%);
-        animation: drift-c 50s var(--ease-in-out) infinite;
+    .glow-b {
+        width: 420px;
+        height: 420px;
+        bottom: -200px;
+        right: -100px;
+        background: radial-gradient(circle, rgba(59, 74, 168, 0.34), transparent 70%);
+        animation: drift-b 46s var(--ease-in-out) infinite;
+    }
+
+    /* Trame très discrète, façon "surface technique". */
+    .grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+        background-size: 34px 34px;
+        mask-image: radial-gradient(120% 90% at 50% 30%, #000 40%, transparent 85%);
+        -webkit-mask-image: radial-gradient(120% 90% at 50% 30%, #000 40%, transparent 85%);
     }
 
     .vignette {
         position: absolute;
         inset: 0;
-        background: radial-gradient(130% 100% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
-        pointer-events: none;
+        background: radial-gradient(130% 100% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.5) 100%);
     }
 
     @keyframes drift-a {
         0%, 100% { transform: translate(0, 0) scale(1); }
-        50% { transform: translate(60px, 40px) scale(1.08); }
+        50% { transform: translate(50px, 36px) scale(1.08); }
     }
     @keyframes drift-b {
         0%, 100% { transform: translate(0, 0) scale(1); }
-        50% { transform: translate(-50px, -34px) scale(1.1); }
-    }
-    @keyframes drift-c {
-        0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.14; }
-        50% { transform: translate(-40px, 20px) scale(1.14); opacity: 0.22; }
+        50% { transform: translate(-44px, -30px) scale(1.1); }
     }
 </style>
