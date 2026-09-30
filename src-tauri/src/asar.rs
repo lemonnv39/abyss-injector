@@ -126,6 +126,17 @@ fn extract_build_sha(index_js: &str) -> Option<String> {
     Some(line.trim_start_matches("// abyss-build-sha:").trim().to_string())
 }
 
+/// Lit le `require(...)` d'un stub `app.asar` en forme de DOSSIER
+/// (`app.asar/` contenant un `index.js`), la technique d'injection utilisée par
+/// Vencord/Equicord — et par Abyss quand il est posé via Skin Walker — au lieu
+/// d'un fichier asar. `inspect_asar` ci-dessus fait `File::open` et échoue donc
+/// sur un dossier ; ce helper permet aux appelants de reconnaître/nommer ce
+/// type de stub sans planter. Renvoie le chemin requis (ex. le patcher du mod).
+pub fn read_dir_stub_require(app_asar_dir: &Path) -> Option<String> {
+    let index = std::fs::read_to_string(app_asar_dir.join("index.js")).ok()?;
+    extract_require_path(&index)
+}
+
 /// Lit un app.asar existant et détermine s'il s'agit du vrai Discord, d'un
 /// stub écrit par Abyss, ou d'un stub écrit par autre chose. `our_patcher_path`
 /// est le chemin ABSOLU du patcher.js qu'Abyss utiliserait lui-même

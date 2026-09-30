@@ -138,6 +138,10 @@ fn foreign_label(require_path: &str) -> String {
         "Equicord".to_string()
     } else if lower.contains("vencord") {
         "Vencord".to_string()
+    } else if lower.contains("abyss") {
+        // Abyss déjà installé, mais par un autre outil (Skin Walker) et en
+        // forme de dossier — l'injecteur autonome le remplacera proprement.
+        "Abyss (autre installeur)".to_string()
     } else {
         "un autre mod".to_string()
     }
@@ -166,6 +170,29 @@ fn build_install(branch: &str, dirname: &str, our_patcher_path: &Path) -> Discor
     };
 
     let app_asar = raw.resources_path.join("app.asar");
+
+    // Cas d'un stub en forme de DOSSIER (Vencord/Equicord, ou Abyss posé par
+    // Skin Walker) : inspect_asar (qui ouvre un fichier) échouerait dessus, on
+    // le reconnaît donc explicitement ici comme un patch étranger — le vrai
+    // asar est dans _app.asar à côté, et patch_discord le restaurera avant
+    // d'écrire notre propre stub-fichier.
+    if app_asar.is_dir() {
+        let foreign = asar::read_dir_stub_require(&app_asar)
+            .map(|p| foreign_label(&p))
+            .unwrap_or_else(|| "un autre mod".to_string());
+        return DiscordInstall {
+            id: branch.to_string(),
+            branch: branch.to_string(),
+            installed: true,
+            base_path: Some(raw.base_path.display().to_string()),
+            resources_path: Some(raw.resources_path.display().to_string()),
+            version: Some(raw.version),
+            patch_owner: PatchOwner::Foreign,
+            build_sha: None,
+            foreign_name: Some(foreign),
+        };
+    }
+
     let (patch_owner, build_sha, foreign_name) = match asar::inspect_asar(&app_asar, our_patcher_path) {
         Ok(StubOwner::Genuine) => (PatchOwner::None, None, None),
         Ok(StubOwner::Abyss { build_sha }) => (PatchOwner::Abyss, build_sha, None),

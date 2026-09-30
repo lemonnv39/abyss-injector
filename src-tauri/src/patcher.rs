@@ -150,6 +150,21 @@ fn copy_with_retry(from: &Path, to: &Path) -> io::Result<()> {
     retry_io(|| fs::copy(from, to).map(|_| ()))
 }
 
+/// Supprime `app.asar` qu'il soit un FICHIER (stub classique / vrai asar) ou un
+/// DOSSIER (`app.asar/`, la technique d'injection de Vencord/Equicord et d'Abyss
+/// via Skin Walker). Sans ça, restaurer le vrai asar par-dessus un app.asar en
+/// dossier échouait — `fs::copy` refuse d'écraser un dossier — et bouclait ~45s
+/// en retry avant d'abandonner, ce qui figeait l'install à « Installation… ».
+/// Un `app.asar` absent est un succès (rien à retirer).
+fn remove_app_asar(app_asar: &Path) -> io::Result<()> {
+    retry_io(|| match fs::symlink_metadata(app_asar) {
+        Ok(m) if m.is_dir() => fs::remove_dir_all(app_asar),
+        Ok(_) => fs::remove_file(app_asar),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e),
+    })
+}
+
 fn write_stub_with_retry(out_file: &Path, patcher_path: &str, build_sha: Option<&str>) -> io::Result<()> {
     retry_io(|| asar::write_app_asar(out_file, patcher_path, build_sha))
 }
@@ -175,6 +190,9 @@ fn unpatch_dir(resources: &Path) -> io::Result<()> {
         ));
     }
 
+    // Retire l'app.asar courant (fichier stub OU dossier d'un autre cord) avant
+    // de recopier le vrai asar par-dessus — indispensable pour la forme dossier.
+    remove_app_asar(&app_asar)?;
     copy_with_retry(&backup, &app_asar)?;
     let _ = fs::remove_file(&backup);
 
@@ -186,7 +204,20 @@ fn patch_dir(resources: &Path, patcher_path: &str, build_sha: Option<&str>) -> i
     let backup = resources.join("_app.asar");
 
     if backup.exists() {
+        // Un backup existe (le nôtre OU celui d'un autre cord) : on restaure
+        // d'abord le vrai app.asar pour repartir propre. unpatch_dir gère le cas
+        // où l'app.asar courant est un dossier.
         unpatch_dir(resources)?;
+    } else if app_asar.is_dir() {
+        // app.asar est un dossier-stub d'un autre mod MAIS il n'y a pas de
+        // _app.asar : on n'a aucune copie du vrai asar à restaurer. Écrire notre
+        // stub par-dessus détruirait la seule chose en place — on refuse
+        // proprement plutôt que de casser Discord.
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "app.asar est un dossier (autre mod) sans sauvegarde _app.asar : \
+            impossible de retrouver le Discord d'origine. Réinstalle Discord proprement, puis relance l'injecteur.",
+        ));
     }
 
     copy_with_retry(&app_asar, &backup)?;
@@ -203,6 +234,16 @@ fn patch_dir(resources: &Path, patcher_path: &str, build_sha: Option<&str>) -> i
 /// à désinstaller Equicord/Vencord "à la main" avant de pouvoir injecter Abyss.
 fn clean_foreign_patch(resources: &Path, our_patcher_path: &Path) -> io::Result<bool> {
     let app_asar = resources.join("app.asar");
+
+    // Stub en forme de DOSSIER (Vencord/Equicord, ou Abyss via Skin Walker) :
+    // inspect_asar (File::open) ne sait pas le lire, on le détecte ici. Le vrai
+    // asar est dans _app.asar et unpatch_dir le restaure (en retirant d'abord le
+    // dossier). Sans backup, unpatch_dir renvoie une erreur explicite.
+    if app_asar.is_dir() {
+        unpatch_dir(resources)?;
+        return Ok(true);
+    }
+
     match asar::inspect_asar(&app_asar, our_patcher_path) {
         Ok(StubOwner::Foreign { .. }) => {
             unpatch_dir(resources)?;
