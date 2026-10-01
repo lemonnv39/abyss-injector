@@ -1,38 +1,42 @@
 /* Abyss Injector — design tokens
-   Direction : OLED/slate dark + accent violet Abyss, typographie système nette
-   (Segoe UI natif Windows, Inter si dispo), sobre et clean. Aucune police
+   Direction : monochrome pur, noir profond OLED + blanc franc comme accent
+   (boutons inversés : blanc plein sur noir). Zéro teinte de couleur — tout se
+   joue sur le contraste, la luminosité et la lumière blanche. Typographie
+   système nette (Segoe UI natif Windows, Inter si dispo). Aucune police
    embarquée : l'app tourne hors-ligne et Segoe UI est déjà parfait sur Windows. */
 
 :root {
     color-scheme: dark;
 
-    /* ── Surfaces ─────────────────────────────────────────────────────── */
-    --bg: #0d1017;
-    --bg-2: #0a0c12;
-    --surface: #151925;
-    --surface-2: #1b2130;
-    --surface-3: #232b3d;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.14);
+    /* ── Surfaces (gris neutres, aucune teinte) ───────────────────────── */
+    --bg: #000000;
+    --bg-2: #060606;
+    --surface: #0f0f10;
+    --surface-2: #18181a;
+    --surface-3: #242427;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.20);
 
     /* ── Texte ────────────────────────────────────────────────────────── */
-    --text: #f4f6fb;
-    --text-dim: #9aa4b8;
-    --text-faint: #647089;
+    --text: #fafafa;
+    --text-dim: #9a9a9d;
+    --text-faint: #636366;
 
-    /* ── Accent (violet Abyss) ────────────────────────────────────────── */
-    --accent: #8b5cf6;
-    --accent-hover: #a78bfa;
-    --accent-press: #7c3aed;
-    --on-accent: #ffffff;
-    --accent-soft: rgba(139, 92, 246, 0.14);
-    --accent-line: rgba(139, 92, 246, 0.35);
+    /* ── Accent = BLANC (inversion : surface blanche, texte noir) ──────── */
+    --accent: #ffffff;
+    --accent-hover: #e4e4e7;
+    --accent-press: #c7c7cc;
+    --on-accent: #000000;
+    --accent-soft: rgba(255, 255, 255, 0.10);
+    --accent-line: rgba(255, 255, 255, 0.26);
+    /* Halo blanc diffus pour les surfaces accent (remplace les ombres violettes). */
+    --accent-glow: rgba(255, 255, 255, 0.22);
 
-    /* ── États ────────────────────────────────────────────────────────── */
-    --ok: #34d399;
-    --warning: #fbbf24;
-    --danger: #f87171;
-    --ring: #a78bfa;
+    /* ── États — monochromes, distingués par luminosité + texte/icône ─── */
+    --ok: #ffffff;
+    --warning: #a1a1a6;
+    --danger: #ffffff;
+    --ring: #ffffff;
 
     /* ── Rythme ───────────────────────────────────────────────────────── */
     --space-1: 4px;

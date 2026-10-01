@@ -68,7 +68,7 @@
         border-radius: var(--radius-sm);
         font-size: 12.5px;
         font-weight: 600;
-        box-shadow: 0 2px 12px rgba(124, 58, 237, 0.35);
+        box-shadow: 0 2px 12px var(--accent-glow);
         transition: background var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
     }
     .btn:hover:not(:disabled) { background: var(--accent-hover); }

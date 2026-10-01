@@ -68,8 +68,8 @@
         font-size: 13px;
         font-weight: 800;
         color: var(--on-accent);
-        background: linear-gradient(150deg, var(--accent-hover), var(--accent-press));
-        box-shadow: 0 2px 8px rgba(124, 58, 237, 0.4);
+        background: linear-gradient(150deg, #ffffff, #b8b8bd);
+        box-shadow: 0 2px 10px var(--accent-glow);
     }
 
     .title {
@@ -107,7 +107,7 @@
     }
     .ctl svg { width: 16px; height: 16px; }
     .ctl:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
-    .ctl--close:hover { background: var(--danger); color: #1a0808; }
+    .ctl--close:hover { background: #ffffff; color: #000000; }
 
     .back:hover { transform: none; }
 </style>

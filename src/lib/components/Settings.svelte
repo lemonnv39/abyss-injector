@@ -230,23 +230,25 @@
         background: var(--accent);
         border-color: transparent;
         color: var(--on-accent);
-        box-shadow: 0 2px 12px rgba(124, 58, 237, 0.3);
+        box-shadow: 0 2px 12px var(--accent-glow);
     }
     .btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
 
     .hint {
         margin: 0;
         font-size: 12px;
-        color: var(--ok);
+        color: var(--text);
         padding: 9px 12px;
         border-radius: var(--radius-sm);
-        background: rgba(52, 211, 153, 0.1);
-        border: 1px solid rgba(52, 211, 153, 0.3);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-left: 3px solid rgba(255, 255, 255, 0.55);
     }
 
     .hint--error {
-        color: var(--danger);
-        background: rgba(248, 113, 113, 0.1);
-        border-color: rgba(248, 113, 113, 0.35);
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.07);
+        border-color: rgba(255, 255, 255, 0.26);
+        border-left-color: #ffffff;
     }
 </style>

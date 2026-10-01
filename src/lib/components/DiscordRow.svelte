@@ -24,14 +24,16 @@
         canary: "Discord Canary",
         ptb: "Discord PTB",
     };
+    // Monochrome : trois nuances de gris distinctes pour différencier les tuiles
+    // sans introduire de couleur (le libellé reste la source de vérité).
     const BRANCH_COLOR: Record<string, string> = {
-        stable: "#5865f2",
-        canary: "#faa61a",
-        ptb: "#3e70dd",
+        stable: "#f4f4f5",
+        canary: "#a1a1aa",
+        ptb: "#71717a",
     };
 
     const label = $derived(BRANCH_LABEL[install.branch] ?? install.branch);
-    const color = $derived(BRANCH_COLOR[install.branch] ?? "#5865f2");
+    const color = $derived(BRANCH_COLOR[install.branch] ?? "#f4f4f5");
 
     const injected = $derived(install.patch_owner === "abyss");
     const foreign = $derived(install.patch_owner === "foreign");
@@ -218,7 +220,7 @@
     .btn--primary {
         background: var(--accent);
         color: var(--on-accent);
-        box-shadow: 0 2px 12px rgba(124, 58, 237, 0.35);
+        box-shadow: 0 2px 14px var(--accent-glow);
     }
     .btn--primary:hover { background: var(--accent-hover); }
 
@@ -229,11 +231,14 @@
     }
     .btn--ghost:hover { background: rgba(255, 255, 255, 0.1); color: var(--text); }
 
+    /* Destructif : contour blanc (et non pleine surface) pour le distinguer
+       nettement du bouton primaire plein, sans recourir à une couleur. */
     .btn--danger {
-        background: var(--danger);
-        color: #1a0808;
+        background: transparent;
+        border-color: var(--border-strong);
+        color: var(--text);
     }
-    .btn--danger:hover { background: #f4a0a0; }
+    .btn--danger:hover { background: #fff; border-color: #fff; color: #000; }
 
     .tag {
         font-size: 12px;

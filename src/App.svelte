@@ -257,7 +257,7 @@
         color: var(--text);
     }
     .grad {
-        background: linear-gradient(120deg, var(--accent-hover), #d8b4fe);
+        background: linear-gradient(120deg, #ffffff 0%, #ffffff 40%, #86868b 100%);
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
@@ -311,16 +311,17 @@
         flex-shrink: 0;
         transition: background var(--duration-fast) var(--ease-out);
     }
-    .mini-banner button:hover:not(:disabled) { background: rgba(139, 92, 246, 0.22); }
+    .mini-banner button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2); }
     .mini-banner button:disabled { opacity: 0.6; cursor: default; }
 
     .error {
         margin: 0;
         padding: 9px 12px;
         border-radius: var(--radius-sm);
-        border: 1px solid rgba(248, 113, 113, 0.35);
-        background: rgba(248, 113, 113, 0.1);
-        color: var(--danger);
+        border: 1px solid rgba(255, 255, 255, 0.26);
+        border-left: 3px solid #ffffff;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
         font-size: 12px;
     }
 
