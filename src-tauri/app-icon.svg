@@ -1,36 +1,15 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <radialGradient id="bg" cx="50%" cy="40%" r="80%">
-      <stop offset="0%" stop-color="#17121f"/>
-      <stop offset="60%" stop-color="#0b0a0f"/>
-      <stop offset="100%" stop-color="#030303"/>
-    </radialGradient>
-    <radialGradient id="depth" cx="50%" cy="41%" r="34%">
-      <stop offset="0%" stop-color="#7c5cff" stop-opacity="0.6"/>
-      <stop offset="100%" stop-color="#7c5cff" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#9f86ff"/>
-    </linearGradient>
-  </defs>
+  <!-- Fond : carré arrondi noir -->
+  <rect width="1024" height="1024" rx="228" fill="#050505"/>
 
-  <!-- Fond : carré arrondi, dégradé radial très sombre -->
-  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <!-- Anneau (planète / trou noir) -->
+  <circle cx="512" cy="512" r="210" fill="none" stroke="#ffffff" stroke-width="66"/>
 
-  <!-- Lueur violette au fond du puits (profondeur) -->
-  <circle cx="512" cy="420" r="270" fill="url(#depth)"/>
+  <!-- Lame diagonale effilée qui transperce l'anneau (bas-gauche -> haut-droite) -->
+  <path d="M251.8,772.2 Q544.5,544.5 772.2,251.8 Q479.5,479.5 251.8,772.2 Z" fill="#ffffff"/>
 
-  <!-- Tunnel en perspective : anneaux qui rétrécissent et remontent vers un
-       point de fuite = descente dans l'abysse -->
-  <g stroke="url(#ring)" fill="none" stroke-linecap="round">
-    <circle cx="512" cy="560" r="372" stroke-opacity="0.85" stroke-width="26"/>
-    <circle cx="512" cy="527" r="286" stroke-opacity="0.68" stroke-width="23"/>
-    <circle cx="512" cy="497" r="210" stroke-opacity="0.52" stroke-width="20"/>
-    <circle cx="512" cy="468" r="143" stroke-opacity="0.38" stroke-width="16"/>
-    <circle cx="512" cy="442" r="86"  stroke-opacity="0.26" stroke-width="12"/>
-  </g>
-
-  <!-- Le vide au centre -->
-  <circle cx="512" cy="420" r="40" fill="#050406"/>
+  <!-- Deux fentes noires parallèles à la lame : séparent la lame de l'anneau
+       (le "cut" élégant de la DA) -->
+  <path d="M301.3,821.7 Q575,575 821.7,301.3 Q548,548 301.3,821.7 Z" fill="#050505"/>
+  <path d="M202.3,722.7 Q476,476 722.7,202.3 Q449,449 202.3,722.7 Z" fill="#050505"/>
 </svg>
