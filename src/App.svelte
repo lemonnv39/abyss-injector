@@ -171,7 +171,12 @@
                 {:else}
                     <div class="list">
                         <header class="head">
-                            <h1>Installe <span class="grad">Abyss</span></h1>
+                            <div class="head-top">
+                                <h1>Installe <span class="grad">Abyss</span></h1>
+                                {#if latestBuildSha}
+                                    <span class="build-chip" title="Dernière build Abyss disponible">Abyss · build {latestBuildSha.slice(0, 7)}</span>
+                                {/if}
+                            </div>
                             <p>Choisis un Discord et installe ou mets à jour le client mod.</p>
                         </header>
 
@@ -252,12 +257,30 @@
         overflow-y: auto;
     }
 
+    .head-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
     .head h1 {
         margin: 0;
         font-size: 21px;
         font-weight: 700;
         letter-spacing: -0.01em;
         color: var(--text);
+    }
+    .build-chip {
+        flex-shrink: 0;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--text-dim);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 3px 9px;
+        font-family: var(--font-mono);
     }
     .grad {
         background: linear-gradient(120deg, #ffffff 0%, #ffffff 40%, #86868b 100%);

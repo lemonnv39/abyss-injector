@@ -525,7 +525,10 @@ pub async fn fix_abyss(app: AppHandle) -> Result<Vec<FixResult>, String> {
     let mut results = Vec::new();
 
     for install in installs {
-        if install.patch_owner != PatchOwner::Abyss {
+        // On réinstalle les installs déjà en Abyss ET celles où Discord s'est
+        // mis à jour en perdant Abyss (needs_reinject) — pas les autres mods ni
+        // les Discord vierges jamais injectés.
+        if install.patch_owner != PatchOwner::Abyss && !install.needs_reinject {
             continue;
         }
         let (Some(resources), Some(base)) = (&install.resources_path, &install.base_path) else {

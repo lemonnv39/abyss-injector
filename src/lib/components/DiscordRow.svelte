@@ -38,6 +38,10 @@
     const injected = $derived(install.patch_owner === "abyss");
     const foreign = $derived(install.patch_owner === "foreign");
     const installing = $derived(phase.kind === "installing");
+    // Discord s'est auto-mis à jour et a perdu Abyss (un ancien dossier l'avait).
+    const needsReinject = $derived(install.needs_reinject);
+    // "Version" d'Abyss = SHA court de la build injectée.
+    const shortSha = $derived(install.build_sha ? install.build_sha.slice(0, 7) : null);
 
     // Étapes d'installation → libellé court.
     const STEP: Record<InstallProgressEvent["step"], string> = {
@@ -78,9 +82,11 @@
         {:else if !install.installed}
             <div class="status status--dim">Non installé sur ce PC</div>
         {:else if injected && needsUpdate}
-            <div class="status"><span class="dot dot--warn"></span>Abyss actif · mise à jour dispo</div>
+            <div class="status"><span class="dot dot--warn"></span>Abyss actif · mise à jour dispo{#if shortSha} · build {shortSha}{/if}</div>
         {:else if injected}
-            <div class="status"><span class="dot dot--ok"></span>Abyss actif · à jour</div>
+            <div class="status"><span class="dot dot--ok"></span>Abyss actif · à jour{#if shortSha} · build {shortSha}{/if}</div>
+        {:else if needsReinject}
+            <div class="status"><span class="dot dot--warn"></span>Discord mis à jour · Abyss à réappliquer</div>
         {:else if foreign}
             <div class="status"><span class="dot dot--warn"></span>Autre mod détecté{install.foreign_name ? ` (${install.foreign_name})` : ""}</div>
         {:else}
@@ -104,6 +110,8 @@
             <button class="btn btn--primary" onclick={onInstall}>Mettre à jour</button>
         {:else if injected}
             <button class="btn btn--ghost" onclick={onConfirmUninstall}>Désinstaller</button>
+        {:else if needsReinject}
+            <button class="btn btn--primary" onclick={onInstall}>Réappliquer</button>
         {:else}
             <button class="btn btn--primary" onclick={onInstall}>Installer</button>
         {/if}

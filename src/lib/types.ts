@@ -15,6 +15,7 @@ export interface DiscordInstall {
     patch_owner: PatchOwner;
     build_sha: string | null;
     foreign_name: string | null;
+    needs_reinject: boolean;
 }
 
 export interface InjectorSettings {

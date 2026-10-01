@@ -48,6 +48,11 @@ pub struct DiscordInstall {
     pub build_sha: Option<String>,
     /// Nom lisible du mod détecté si patch_owner == Foreign (ex: "Equicord").
     pub foreign_name: Option<String>,
+    /// true quand le dossier actif N'EST PAS patché par Abyss mais qu'un dossier
+    /// de version PLUS ANCIEN de la même branche l'était : Discord s'est
+    /// auto-mis à jour (nouveau dossier app-X vierge) et a « perdu » Abyss. Il
+    /// faut juste réappliquer Abyss sur le dossier courant.
+    pub needs_reinject: bool,
 }
 
 /// Ordre d'affichage fixe voulu par la maquette : Discord, Canary, PTB.
@@ -147,6 +152,42 @@ fn foreign_label(require_path: &str) -> String {
     }
 }
 
+/// Parcourt TOUS les dossiers `app-*` de la branche (toutes bases) et dit si
+/// l'un d'eux porte un stub Abyss — le nôtre (fichier) ou celui de Skin Walker
+/// (dossier pointant vers un patcher Abyss). Sert à détecter qu'Abyss était
+/// installé avant qu'une mise à jour de Discord ne crée un nouveau dossier
+/// vierge (devenu le dossier « actif »).
+fn branch_has_abyss_stub_anywhere(dirname: &str, our_patcher_path: &Path) -> bool {
+    for base in candidate_bases() {
+        let dir = base.join(dirname);
+        let Ok(entries) = fs::read_dir(&dir) else { continue };
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if !p.is_dir() {
+                continue;
+            }
+            match p.file_name().and_then(|n| n.to_str()) {
+                Some(n) if n.starts_with("app-") => {}
+                _ => continue,
+            }
+            let app_asar = p.join("resources").join("app.asar");
+            // Stub fichier écrit par NOTRE injecteur.
+            if let Ok(StubOwner::Abyss { .. }) = asar::inspect_asar(&app_asar, our_patcher_path) {
+                return true;
+            }
+            // Stub dossier (Skin Walker) pointant vers un patcher Abyss.
+            if app_asar.is_dir() {
+                if let Some(req) = asar::read_dir_stub_require(&app_asar) {
+                    if req.to_lowercase().contains("abyss") {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
 fn build_install(branch: &str, dirname: &str, our_patcher_path: &Path) -> DiscordInstall {
     // Une install par base candidate pour cette branche, on garde la plus
     // récente si plusieurs bases en contiennent une (fix "en double").
@@ -166,6 +207,7 @@ fn build_install(branch: &str, dirname: &str, our_patcher_path: &Path) -> Discor
             patch_owner: PatchOwner::None,
             build_sha: None,
             foreign_name: None,
+            needs_reinject: false,
         };
     };
 
@@ -190,6 +232,7 @@ fn build_install(branch: &str, dirname: &str, our_patcher_path: &Path) -> Discor
             patch_owner: PatchOwner::Foreign,
             build_sha: None,
             foreign_name: Some(foreign),
+            needs_reinject: false,
         };
     }
 
@@ -209,6 +252,11 @@ fn build_install(branch: &str, dirname: &str, our_patcher_path: &Path) -> Discor
         }
     };
 
+    // Dossier actif non-Abyss alors qu'un dossier plus ancien portait Abyss =
+    // Discord s'est mis à jour et a perdu l'injection → à réappliquer.
+    let needs_reinject = patch_owner == PatchOwner::None
+        && branch_has_abyss_stub_anywhere(dirname, our_patcher_path);
+
     DiscordInstall {
         id: branch.to_string(),
         branch: branch.to_string(),
@@ -219,6 +267,7 @@ fn build_install(branch: &str, dirname: &str, our_patcher_path: &Path) -> Discor
         patch_owner,
         build_sha,
         foreign_name,
+        needs_reinject,
     }
 }
 
