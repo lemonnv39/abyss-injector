@@ -43,19 +43,16 @@ jobs:
       - name: Build portable exe (no installer)
         run: pnpm tauri build --no-bundle
 
-      # Copie sous un nom lisible pour l'utilisateur (le fichier téléchargé
-      # s'affichera « Abyss Injecteur » dans l'explorateur). On publie AUSSI
-      # abyss-injector.exe pour que les anciennes versions (dont le self-update
-      # cherche exactement ce nom) continuent à se mettre à jour.
-      - name: Dupliquer sous le nom d'affichage
+      # Renomme sous le nom lisible pour l'utilisateur (le fichier téléchargé
+      # s'affichera « Abyss Injecteur » dans l'explorateur). Un seul asset : le
+      # self-update (v0.1.5+) sait prendre n'importe quel .exe de la release.
+      - name: Renommer sous le nom d'affichage
         shell: pwsh
-        run: Copy-Item "src-tauri/target/release/abyss-injector.exe" "src-tauri/target/release/Abyss Injecteur.exe"
+        run: Rename-Item "src-tauri/target/release/abyss-injector.exe" "Abyss Injecteur.exe"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            src-tauri/target/release/Abyss Injecteur.exe
-            src-tauri/target/release/abyss-injector.exe
+          files: src-tauri/target/release/Abyss Injecteur.exe
           fail_on_unmatched_files: true
           generate_release_notes: true
