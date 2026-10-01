@@ -26,7 +26,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use sysinfo::{Disks, ProcessesToUpdate, System};
 use tauri::{AppHandle, Emitter};
 
@@ -40,6 +40,16 @@ struct ProgressEvent<'a> {
 
 fn emit_progress(app: &AppHandle, branch: &str, step: &str, status: &str, message: Option<String>) {
     let _ = app.emit("install-progress", ProgressEvent { branch, step, status, message });
+}
+
+/// Compte les process encore vivants pour cette branche (nom d'exe exact —
+/// inclut les process enfants Electron, qui portent le même nom).
+fn count_running(sys: &mut System, exe: &str) -> usize {
+    sys.refresh_processes(ProcessesToUpdate::All, true);
+    sys.processes()
+        .values()
+        .filter(|p| p.name().to_string_lossy().eq_ignore_ascii_case(exe))
+        .count()
 }
 
 fn kill_running(branch: &str) -> bool {
@@ -57,11 +67,22 @@ fn kill_running(branch: &str) -> bool {
     }
 
     if killed_any {
-        // Laisse Windows relâcher les handles sur app.asar avant d'y toucher
-        // (voir aussi retry_io ci-dessous, qui rattrape le cas où 700ms ne
-        // suffisent pas — observé en pratique juste après une relance de
-        // Discord par l'injecteur lui-même).
-        thread::sleep(Duration::from_millis(700));
+        // Attend que TOUS les process de cette branche aient réellement disparu
+        // avant de rendre la main — pas juste un délai fixe de 700ms. Deux
+        // raisons :
+        //  1. libérer les handles sur app.asar avant de le réécrire (le retry_io
+        //     plus bas reste un filet de sécurité) ;
+        //  2. surtout : éviter que la RELANCE démarre une nouvelle instance de
+        //     Discord pendant qu'une ancienne agonise encore. Electron
+        //     déclenche alors son événement « second-instance » sur une fenêtre
+        //     déjà détruite → le dialogue « TypeError: Object has been
+        //     destroyed » que Discord affiche en pleine install.
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while count_running(&mut sys, exe) > 0 && Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(200));
+        }
+        // Petit répit pour laisser l'OS/Defender relâcher les derniers handles.
+        thread::sleep(Duration::from_millis(400));
     }
     killed_any
 }
