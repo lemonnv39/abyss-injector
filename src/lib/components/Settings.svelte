@@ -39,7 +39,7 @@
         checkingInjector = true;
         try {
             const outcome = await onCheckInjectorUpdate();
-            if (outcome === "none") report("Abyss Injector est déjà à jour.");
+            if (outcome === "none") report("Abyss Injecteur est déjà à jour.");
         } catch (e) {
             report(String(e), true);
         } finally {
@@ -103,14 +103,14 @@
     {/if}
 
     <div class="card">
-        <div class="card-title">Abyss Injector</div>
+        <div class="card-title">Abyss Injecteur</div>
         <div class="card-subtitle">Version {appVersion || "…"}</div>
         <div class="card-actions">
             <button class="btn" disabled={checkingInjector || !!pendingUpdate} onclick={handleCheckInjectorUpdate}>
                 {checkingInjector ? "Vérification…" : "Vérifier les mises à jour"}
             </button>
         </div>
-        <div class="credit">Powered by Mxxq &amp; Octn dev</div>
+        <div class="credit">Développé par mxxq</div>
     </div>
 </div>
 

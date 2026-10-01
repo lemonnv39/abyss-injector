@@ -15,7 +15,7 @@
             </button>
             <span class="title">Paramètres</span>
         {:else}
-            <span class="title">Abyss <span class="title-dim">Injector</span></span>
+            <span class="title">Abyss <span class="title-dim">Injecteur</span></span>
         {/if}
     </div>
 

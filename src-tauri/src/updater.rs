@@ -19,7 +19,10 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 
 const RELEASES_API: &str = "https://api.github.com/repos/lemonnv39/abyss-injector/releases/latest";
-const ASSET_NAME: &str = "abyss-injector.exe";
+// Noms d'asset préférés, essayés dans l'ordre ; à défaut on prend le premier
+// asset .exe de la release. Robuste à un renommage du binaire (self_replace
+// remplace l'exe courant quel que soit son nom local).
+const PREFERRED_ASSETS: &[&str] = &["Abyss Injecteur.exe", "abyss-injector.exe"];
 
 #[derive(Deserialize)]
 struct Release {
@@ -82,11 +85,11 @@ async fn available_update() -> Result<Option<UpdateInfo>, String> {
     if latest <= current {
         return Ok(None);
     }
-    let asset = rel
-        .assets
+    let asset = PREFERRED_ASSETS
         .iter()
-        .find(|a| a.name.eq_ignore_ascii_case(ASSET_NAME))
-        .ok_or_else(|| format!("Asset « {ASSET_NAME} » absent de la release {}", rel.tag_name))?;
+        .find_map(|name| rel.assets.iter().find(|a| a.name.eq_ignore_ascii_case(name)))
+        .or_else(|| rel.assets.iter().find(|a| a.name.to_ascii_lowercase().ends_with(".exe")))
+        .ok_or_else(|| format!("Aucun .exe dans la release {}", rel.tag_name))?;
     Ok(Some(UpdateInfo {
         version: normalize_tag(&rel.tag_name).to_string(),
         notes: rel.body,
