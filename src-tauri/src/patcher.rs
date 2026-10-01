@@ -229,16 +229,33 @@ fn patch_dir(resources: &Path, patcher_path: &str, build_sha: Option<&str>) -> i
         // d'abord le vrai app.asar pour repartir propre. unpatch_dir gère le cas
         // où l'app.asar courant est un dossier.
         unpatch_dir(resources)?;
-    } else if app_asar.is_dir() {
-        // app.asar est un dossier-stub d'un autre mod MAIS il n'y a pas de
-        // _app.asar : on n'a aucune copie du vrai asar à restaurer. Écrire notre
-        // stub par-dessus détruirait la seule chose en place — on refuse
-        // proprement plutôt que de casser Discord.
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "app.asar est un dossier (autre mod) sans sauvegarde _app.asar : \
-            impossible de retrouver le Discord d'origine. Réinstalle Discord proprement, puis relance l'injecteur.",
-        ));
+    } else {
+        // Pas de sauvegarde : app.asar DOIT être le vrai asar d'origine, sinon
+        // le copier vers _app.asar sauvegarderait un stub comme s'il était le
+        // Discord d'origine — et le vrai asar serait définitivement perdu
+        // (uninstall restaurerait alors un stub = Discord cassé).
+        if app_asar.is_dir() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "app.asar est un dossier (autre mod) sans sauvegarde _app.asar : \
+                impossible de retrouver le Discord d'origine. Réinstalle Discord proprement, puis relance l'injecteur.",
+            ));
+        }
+        match asar::inspect_asar(&app_asar, Path::new("")) {
+            // Vrai asar Discord : OK pour le sauvegarder.
+            Ok(StubOwner::Genuine) => {}
+            // Déjà un stub (Abyss ou autre mod) sans backup : le vrai asar
+            // manque, on refuse plutôt que de pérenniser la perte.
+            Ok(_) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "app.asar est déjà un stub de mod sans sauvegarde _app.asar : \
+                    le Discord d'origine est introuvable. Réinstalle Discord proprement, puis relance l'injecteur.",
+                ));
+            }
+            // Illisible (droits/verrou) : on tente quand même, retry_io gère.
+            Err(_) => {}
+        }
     }
 
     copy_with_retry(&app_asar, &backup)?;
@@ -483,20 +500,6 @@ pub struct FixResult {
     message: Option<String>,
 }
 
-/// Un build cassé = un des fichiers attendus dans le cache dist est manquant
-/// ou vide — arrive si un téléchargement a été interrompu, ou si l'utilisateur
-/// (ou un antivirus trop zélé) a touché au dossier de cache à la main.
-fn dist_files_broken(our_patcher_path: &Path) -> bool {
-    let Some(dir) = our_patcher_path.parent() else { return true };
-    for filename in ["patcher.js", "preload.js", "renderer.js", "renderer.css"] {
-        match fs::metadata(dir.join(filename)) {
-            Ok(m) if m.len() > 0 => continue,
-            _ => return true,
-        }
-    }
-    false
-}
-
 async fn repair_one(app: &AppHandle, resources: &Path, base: &Path, branch: &str) -> Result<(), String> {
     kill_running(branch);
     let patcher_path = dist_fetch::download_latest(app).await?;
@@ -507,16 +510,17 @@ async fn repair_one(app: &AppHandle, resources: &Path, base: &Path, branch: &str
     Ok(())
 }
 
-/// "Fixer Abyss" (Réglages) : vérifie chaque install actuellement patchée par
-/// Abyss — fichiers du build présents et non vides — et répare automatiquement
-/// (retéléchargement forcé + ré-écriture du stub + relance) celles qui sont
-/// cassées. N'touche jamais une install non gérée par Abyss (patch_owner
-/// différent de Abyss) ni les branches non installées.
+/// "Fixer Abyss" (Réglages) : réinstalle proprement chaque install actuellement
+/// gérée par Abyss — restaure le vrai app.asar depuis la sauvegarde, re-télécharge
+/// la dernière dist, ré-écrit le stub et relance Discord. Opération idempotente :
+/// qu'un build soit cassé (fichier manquant, écriture partielle, stub périmé) ou
+/// non, on repart d'un état propre et à jour. Ne touche jamais une install non
+/// gérée par Abyss (autre mod, ou Discord d'origine) ni les branches non
+/// installées ; une install dont la sauvegarde _app.asar manque remonte une
+/// erreur explicite (le patch_dir refuse de sauvegarder un stub comme "vrai" asar).
 #[tauri::command]
 pub async fn fix_abyss(app: AppHandle) -> Result<Vec<FixResult>, String> {
     let our_patcher_path = resolve_our_patcher_path(&app, None);
-    let broken = dist_files_broken(&our_patcher_path);
-
     let installs = discord::find_discords(&our_patcher_path);
     let mut results = Vec::new();
 
@@ -527,11 +531,6 @@ pub async fn fix_abyss(app: AppHandle) -> Result<Vec<FixResult>, String> {
         let (Some(resources), Some(base)) = (&install.resources_path, &install.base_path) else {
             continue;
         };
-
-        if !broken {
-            results.push(FixResult { branch: install.branch, was_broken: false, fixed: false, message: None });
-            continue;
-        }
 
         match repair_one(&app, Path::new(resources), Path::new(base), &install.branch).await {
             Ok(()) => results.push(FixResult { branch: install.branch, was_broken: true, fixed: true, message: None }),

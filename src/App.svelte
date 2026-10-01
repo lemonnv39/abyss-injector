@@ -210,7 +210,10 @@
 
                         <footer class="foot">
                             <span>Abyss Injector{appVersion ? ` v${appVersion}` : ""}</span>
-                            <span>Discord Stable · Canary · PTB</span>
+                            <span class="credit">
+                                <svg class="credit-star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.9L12 2.5z" /></svg>
+                                Développé par <span class="credit-name">mxxq</span>
+                            </span>
                         </footer>
                     </div>
                 {/if}
@@ -333,5 +336,24 @@
         justify-content: space-between;
         font-size: 11px;
         color: var(--text-faint);
+    }
+    .credit {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        letter-spacing: 0.01em;
+    }
+    .credit-star {
+        width: 11px;
+        height: 11px;
+        color: var(--text-dim);
+    }
+    .credit-name {
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        background: linear-gradient(120deg, #ffffff 0%, #ffffff 45%, #8a8a8f 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
     }
 </style>

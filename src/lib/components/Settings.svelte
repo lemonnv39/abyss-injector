@@ -1,7 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { getVersion } from "@tauri-apps/api/app";
-    import { open, save } from "@tauri-apps/plugin-dialog";
     import { patcherApi } from "../api/patcher";
     import type { FixResult } from "../types";
     import type { InjectorUpdate } from "../api/updater";
@@ -21,8 +20,6 @@
 
     let appVersion = $state("");
 
-    let importing = $state(false);
-    let exporting = $state(false);
     let fixing = $state(false);
     let checkingInjector = $state(false);
     let resultMessage = $state<string | null>(null);
@@ -50,55 +47,21 @@
         }
     }
 
-    async function handleImport() {
-        resultMessage = null;
-        const path = await open({
-            multiple: false,
-            filters: [{ name: "Préréglage de plugins Abyss", extensions: ["json"] }],
-        });
-        if (!path || Array.isArray(path)) return;
-
-        importing = true;
-        try {
-            await patcherApi.importPluginPresets(path);
-            report("Préréglage importé — redémarre Abyss pour l'appliquer.");
-        } catch (e) {
-            report(String(e), true);
-        } finally {
-            importing = false;
-        }
-    }
-
-    async function handleExport() {
-        resultMessage = null;
-        const path = await save({
-            defaultPath: "abyss-plugins.json",
-            filters: [{ name: "Préréglage de plugins Abyss", extensions: ["json"] }],
-        });
-        if (!path) return;
-
-        exporting = true;
-        try {
-            await patcherApi.exportPluginPresets(path);
-            report("Préréglage exporté avec succès.");
-        } catch (e) {
-            report(String(e), true);
-        } finally {
-            exporting = false;
-        }
-    }
+    const BRANCH_LABEL: Record<string, string> = {
+        stable: "Discord",
+        canary: "Canary",
+        ptb: "PTB",
+    };
+    const labelOf = (b: string) => BRANCH_LABEL[b] ?? b;
 
     function summarizeFix(results: FixResult[]): string {
-        if (results.length === 0) return "Aucune install Abyss détectée à vérifier.";
+        if (results.length === 0) return "Aucune install Abyss détectée — rien à réparer.";
         const fixed = results.filter(r => r.fixed);
-        const failed = results.filter(r => r.was_broken && !r.fixed);
+        const failed = results.filter(r => !r.fixed);
         if (failed.length > 0) {
-            return `Échec sur ${failed.map(r => r.branch).join(", ")} : ${failed[0].message ?? "erreur inconnue"}`;
+            return `Échec sur ${failed.map(r => labelOf(r.branch)).join(", ")} : ${failed[0].message ?? "erreur inconnue"}`;
         }
-        if (fixed.length > 0) {
-            return `Réparé : ${fixed.map(r => r.branch).join(", ")}. Redémarre Discord pour appliquer.`;
-        }
-        return "Tout est en ordre, aucune réparation nécessaire.";
+        return `Abyss réinstallé proprement : ${fixed.map(r => labelOf(r.branch)).join(", ")} — Discord redémarre.`;
     }
 
     async function handleFix() {
@@ -117,19 +80,6 @@
 </script>
 
 <div class="settings">
-    <div class="card">
-        <div class="card-title">Préréglages de plugins</div>
-        <div class="card-subtitle">Sauvegarde ou restaure l'état et les réglages de tes plugins Abyss.</div>
-        <div class="card-actions">
-            <button class="btn" disabled={importing} onclick={handleImport}>
-                {importing ? "Import…" : "Importer un préréglage"}
-            </button>
-            <button class="btn" disabled={exporting} onclick={handleExport}>
-                {exporting ? "Export…" : "Exporter mes préréglages"}
-            </button>
-        </div>
-    </div>
-
     <div class="card">
         <div class="card-title">Réparation</div>
         <div class="card-subtitle">Vérifie les fichiers injectés et réinstalle automatiquement ce qui est cassé.</div>

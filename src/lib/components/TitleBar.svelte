@@ -15,7 +15,6 @@
             </button>
             <span class="title">Paramètres</span>
         {:else}
-            <span class="mark" aria-hidden="true">A</span>
             <span class="title">Abyss <span class="title-dim">Injector</span></span>
         {/if}
     </div>
@@ -57,19 +56,6 @@
         display: flex;
         align-items: center;
         gap: 10px;
-    }
-
-    .mark {
-        width: 22px;
-        height: 22px;
-        border-radius: 7px;
-        display: grid;
-        place-items: center;
-        font-size: 13px;
-        font-weight: 800;
-        color: var(--on-accent);
-        background: linear-gradient(150deg, #ffffff, #b8b8bd);
-        box-shadow: 0 2px 10px var(--accent-glow);
     }
 
     .title {
