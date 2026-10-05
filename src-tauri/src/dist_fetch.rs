@@ -140,17 +140,6 @@ pub async fn download_latest(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir.join("patcher.js"))
 }
 
-/// Retourne le patcher.js en cache, le télécharge d'abord s'il est absent.
-/// Ne revérifie PAS s'il est à jour à chaque patch (éviter un aller-retour
-/// réseau à chaque clic) — l'utilisateur rafraîchit via le bouton dédié.
-pub async fn ensure_downloaded(app: &AppHandle) -> Result<PathBuf, String> {
-    let cached = cached_patcher_path(app);
-    if cached.exists() {
-        return Ok(cached);
-    }
-    download_latest(app).await
-}
-
 /// Compare le SHA distant à celui en cache. Ne retourne Some(...) QUE s'il y
 /// a déjà un cache ET qu'il diffère — pas de "mise à jour disponible" pour
 /// quelqu'un qui n'a encore jamais rien téléchargé (ça n'aurait pas de sens

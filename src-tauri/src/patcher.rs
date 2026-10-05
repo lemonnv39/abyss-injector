@@ -418,16 +418,26 @@ pub async fn patch_discord(
             }
             (p, None)
         }
-        None => match dist_fetch::ensure_downloaded(&app).await {
-            Ok(p) => {
-                let sha = dist_fetch::cached_sha(&app);
-                (p, sha)
-            }
-            Err(e) => {
-                emit_progress(&app, &branch, "installing", "error", Some(e.clone()));
-                return Err(e);
-            }
-        },
+        None => {
+            // Toujours récupérer la DERNIÈRE build à l'install/réapplication —
+            // sinon une réinjection (après une MAJ Discord, ou un simple
+            // "Installer") réutilisait la dist EN CACHE et restait coincée sur
+            // une vieille version. Repli sur le cache si le réseau est indispo.
+            let p = match dist_fetch::download_latest(&app).await {
+                Ok(p) => p,
+                Err(e) => {
+                    let cached = dist_fetch::cached_patcher_path(&app);
+                    if cached.exists() {
+                        cached
+                    } else {
+                        emit_progress(&app, &branch, "installing", "error", Some(e.clone()));
+                        return Err(e);
+                    }
+                }
+            };
+            let sha = dist_fetch::cached_sha(&app);
+            (p, sha)
+        }
     };
 
     if let Err(e) = patch_dir(resources, &patcher_path.to_string_lossy(), build_sha.as_deref()) {
